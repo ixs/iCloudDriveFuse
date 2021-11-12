@@ -36,6 +36,15 @@ class ICloudDrive(Operations):
     def __init__(self):
         self.username, _, self.password = netrc.netrc().authenticators("icloud")
         self._api = PyiCloudService(self.username, self.password)
+        if self._api.requires_2fa:
+            print("Two-factor authentication required.")
+            code = input("Enter the code you received of one of your approved devices: ")
+            result = self._api.validate_2fa_code(code)
+            print("Code validation result: %s" % result)
+
+            if not result:
+                print("Failed to verify security code")
+                sys.exit(1)
         self.drive = self._api.drive
         self.root = "/"
         self.cache10m = TTLCache(maxsize=10, ttl=600)
@@ -191,7 +200,8 @@ class ICloudDrive(Operations):
 
 def main(mountpoint):
     logging.basicConfig(level=logging.DEBUG)
-    FUSE(ICloudDrive(), mountpoint, nothreads=True, foreground=True)
+    icloud_drive = ICloudDrive()
+    FUSE(icloud_drive, mountpoint, nothreads=True, foreground=True)
 
 
 if __name__ == "__main__":
